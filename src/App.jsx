@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { initializeApp } from "firebase/app";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getDatabase, ref, set, get, onValue, update, remove
-} from "firebase/database";
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ── Firebase ──────────────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -18,167 +18,37 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const GENRES_PERSONAL = ["恋愛・人間関係","恋愛・人間関係","過去・思い出","過去・思い出","性格・価値観","性格・価値観","もしも系","もしも系","ちょっと深い話","ちょっと深い話"];
-const GENRES_GENERAL = ["食べ物","スポーツ","音楽","映画・アニメ","旅行","動物","ゲーム","ファッション","自然・季節","日常生活"];
-const GENRES = [...GENRES_PERSONAL,...GENRES_PERSONAL,...GENRES_PERSONAL,...GENRES_PERSONAL,...GENRES_PERSONAL,...GENRES_PERSONAL,...GENRES_PERSONAL,...GENRES_GENERAL,...GENRES_GENERAL,...GENRES_GENERAL];
+const GENRES = ["食べ物","スポーツ","音楽","映画・アニメ","旅行","動物","ゲーム","ファッション","自然・季節","日常生活"];
 const POINT_OPTIONS = [2, 1, 0, -1];
-const POINT_LABELS = { 2: "大絶賛", 1: "承認", 0: "不採用", "-1": "罰" };
-const WIN_SCORE = 7;
-const ROLE = { king: "理解され王", retainer: "家臣" };
+const WIN_SCORE = 5;
+const ROLE = { king: "理解王", retainer: "家臣" };
 
 function genRoomCode() {
-  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  return Array.from({length: 4}, () => letters[Math.floor(Math.random() * letters.length)]).join('');
+  return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
 function genPlayerId() {
   return Math.random().toString(36).substring(2, 10);
 }
 
 // ── Claude API ────────────────────────────────────────────────────────────────
-// ── 問題バンク（100問）────────────────────────────────────────────────────────
-const QUESTION_BANK = [
-  "○○が人生で一番恥ずかしかった瞬間は？",
-  "○○が学生時代にやらかした最大の失敗は？",
-  "○○が親に絶対バレたくなかったことは？",
-  "○○はドラマで感動して泣いちゃう？",
-  "○○が酔っ払いすぎるとどうなる？",
-  "○○は朝方？夜型？",
-  "○○が人生で一番びびった瞬間は？",
-  "○○が好きな野球チームは？",
-  "○○が今でも引きずっている黒歴史は？",
-  "○○が職場・学校でやらかした最大のミスは？",
-  "○○のスマホの付き合い方は？",
-  "○○が人生で一番後悔している買い物は？",
-  "○○が絶対に再現したくない最悪の一日は？",
-  "○○が秘かに続けていたけど誰にも言えなかった習慣は？",
-  "○○が絶対に許せない他人の行動は？",
-  "○○が譲れない最大のこだわりは？",
-  "○○のストレス発散法は？",
-  "○○が実は苦手な人のタイプは？",
-  "○○がまだやったことのないことは？",
-  "○○が知り合いのいないパーティーに参加したらどうする？",
-  "○○はミニマリスト？それともマキシマリスト？",
-  "○○が実は密かに気にしていることは？",
-  "○○が言われた忘れられない一言は？",
-  "○○が本音では絶対やりたくない仕事は？",
-  "○○が楽しんでいる活動は？",
-  "○○が一人の時だけやっていることは？",
-  "○○が絶対に曲げないポイントは？",
-  "○○が友達には言えない本音の不満は？",
-  "○○が実は怖いと思う人は？",
-  "○○が宝くじで5億当たったら最初にすることは？",
-  "○○が無人島に一つだけ持っていくものは？",
-  "○○がもし異性に生まれていたら何をしていた？",
-  "○○が余命1週間と言われたらまず何をする？",
-  "○○がタイムマシンで過去に戻るなら何歳に戻る？",
-  "○○が道端で１万円見つけたらすることは？",
-  "○○が転生したら何になりたい？",
-  "○○が魔法を一つ使えるとしたら？",
-  "○○が24時間透明人間になれたら何をする？",
-  "○○が記憶を消せるなら何の記憶を消したい？",
-  "○○が世界の終わりの日にまずすることは？",
-  "○○が子供たちに絶対に教えたいことは？",
-  "○○が無敵になれたら最初にすることは？",
-  "○○が自分のクローンを作ったら何をやらせる？",
-  "○○が一番よくなくすものは？",
-  "○○が書いた本のタイトルは？",
-  "○○の隠れたあだ名は？",
-  "○○が主人公のドラマのタイトルは？",
-  "○○が絶対言わなそうな一言は？",
-  "○○のスマホの検索履歴にありそうなワードは？",
-  "○○が作るカクテルの名前は？",
-  "○○がシャワー浴びながら考えていることは？",
-  "○○が開いたら絶対流行るお店のジャンルは？",
-  "○○が芸人になったらどんなキャラ？",
-  "○○は自分のことが好き？",
-  "○○が総選挙に出たら何位？その理由は？",
-  "○○のLINEのトーク画面にありそうなスタンプは？",
-  "○○が全裸で逃げる夢を見た理由は？",
-  "○○の理想のデートプランは？",
-  "○○が一番キュンとする瞬間は？",
-  "○○が付き合う前に必ず確認することは？",
-  "○○が振られた時にする行動は？",
-  "○○が浮気を疑う瞬間は？",
-  "○○の口説き文句は？",
-  "○○が最近した無駄遣いは？",
-  "○○の理想の告白シチュエーションは？",
-  "○○が絶対に付き合えないタイプは？",
-  "○○が絶対に食べたくないものは？",
-  "○○が二度とやりたくないことは？",
-  "○○が生理的に無理なものは？",
-  "○○が絶対に住みたくない場所は？",
-  "○○が一番テンションが下がる瞬間は？",
-  "○○がやりたくないスポーツは？",
-  "○○が世の中で一番いらないと思うものは？",
-  "○○がどうしても克服できない苦手なものは？",
-  "○○が絶対に見たくない映画のジャンルは？",
-  "○○が一番嫌いな季節とその理由は？",
-  "○○が今焦っていることは？",
-  "○○が10年後になっていたい姿は？",
-  "○○が死ぬ前にやりたいことは？",
-  "○○が今の自分に一言言えるとしたら？",
-  "○○が人生でターニングポイントだったと思う瞬間は？",
-  "○○が友達に絶対に言えない悩みは？",
-  "○○が生まれ変わっても同じ選択をすることは？",
-  "○○が今の仕事・生活で本当に満足していることは？",
-  "○○が老後にやりたいことは？",
-  "○○は今の人生に満足している？",
-  "○○が絶対に後悔したくないと思っていることは？",
-  "○○が人生で一番大切にしている価値観は？",
-  "○○の誰にも言えない野望は？",
-  "○○が今すぐ全てリセットできるなら何を変える？",
-  "○○が人生で一番嬉しかった瞬間は？",
-  "○○の好きなパンは？",
-  "○○の好きなお茶は？",
-  "○○の好きな季節は？",
-  "○○はアクション映画が好き？",
-  "○○の好きな音楽のジャンルは？",
-  "○○の好きな旅行先は？",
-  "○○の好きなスポーツは？",
-  "○○の好きな動物は？",
-  "○○の好きな飲み物は？",
-  "○○の好きな芸人は？",
-  "○○の朝ごはんはパン派？",
-  "○○の好きな天気は？",
-  "○○の好きなコンビニスイーツは？",
-  "○○の好きな居酒屋メニューは？",
-  "○○の好きなゲームは？",
-  "○○の好きな旅行スタイルは？",
-  "○○の好きな休日の過ごし方は？",
-  "○○の好きな漫画・アニメは？",
-  "○○の好きな鍋の具材は？",
-  "○○の好きなラーメンの種類は？",
-  "○○の好きなスタバのメニューは？",
-  "○○の好きなカフェのドリンクは？",
-  "○○の好きなお土産は？",
-  "○○の好きなSNSは？",
-  "○○の好きなファッションはどんなの？",
-  "○○の好きな季節は？",
-  "○○の好きな漫画は？",
-  "○○の好きなワード、フレーズは？",
-  "○○が結成するバンドの名前は？",
-  "○○の好きなポテチの味は？",
-  "○○の嫌いな乗り物は？",
-  "○○の嫌いな家事は？",
-  "○○の嫌いなスポーツは？",
-  "○○の嫌いなファッションアイテムは？",
-  "○○は犬よりも猫を飼いたい？",
-  "○○の嫌いな時間帯は？",
-  "○○の嫌いな場所は？",
-  "○○は恋に落ちるのが早い？ゆっくり？",
-  "○○の嫌いな勉強科目は？",
-  "○○は大盛無料だったら大盛にする？",
-  "○○の子供のころの夢は？",
-  "○○の嫌いな休日の過ごし方は？"
-];
-
-function generateQuiz(genre, kingName, usedQuestions = []) {
-  // 使用済みを除外してシャッフル
-  const unused = QUESTION_BANK.filter(q => !usedQuestions.includes(q.replace('○○', kingName)));
-  const pool = unused.length > 0 ? unused : QUESTION_BANK;
-  const template = pool[Math.floor(Math.random() * pool.length)];
-  const question = template.replace(/○○/g, kingName);
-  return { question, hint: "" };
+async function generateQuiz(genre, kingName) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: `あなたはクイズ出題者です。ジャンルに沿った面白いクイズを1問だけ作ってください。
+JSONのみで返答してください（マークダウン不要）。
+形式: {"question":"問題文","hint":"ヒント（1行、任意）"}
+必ず問題文の主語を「${kingName}」にしてください。例：「${kingName}の好きな食べ物は？」「${kingName}が選ぶ旅行先といえば？」`,
+      messages: [{ role: "user", content: `ジャンル「${genre}」のクイズを1問作って。` }],
+    }),
+  });
+  const data = await res.json();
+  const txt = data.content.map(b => b.text || "").join("");
+  const clean = txt.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -228,15 +98,15 @@ function TopScreen({ onCreateRoom, onJoinRoom }) {
     <div style={S.page}>
       <div style={{ marginBottom: 40, paddingTop: 20 }}>
         <p style={S.tag}>party game</p>
-        <h1 style={S.h1}>忠実なる家臣ゲーム</h1>
-        <p style={{ color: C.muted, fontSize: 13, marginTop: 6, marginBottom: 28 }}>王に認められた有能家臣が勝者だ！</p>
+        <h1 style={S.h1}>○○理解王</h1>
+        <p style={{ color: C.muted, fontSize: 13, marginTop: 6, marginBottom: 28 }}>理解王に認められた家臣が勝者だ！</p>
       </div>
       <button style={S.btn()} onClick={onCreateRoom}>🏠　部屋を作る</button>
       <button style={S.btn(C.red)} onClick={onJoinRoom}>🚪　部屋に参加する</button>
       <div style={{ ...S.card, marginTop: 20 }}>
         <p style={{ color: C.muted, fontSize: 12, margin: 0, lineHeight: 1.8 }}>
           ① 1人が「{ROLE.king}」に選ばれ、残りは「{ROLE.retainer}」<br />
-          ② クイズに全員が回答 → {ROLE.king}が気に入った回答にポイントを付与<br />
+          ② クイズに全員が回答 → {ROLE.king}がポイントを付与<br />
           ③ 誰かが {WIN_SCORE}pt に達したらゲーム終了！
         </p>
       </div>
@@ -247,6 +117,7 @@ function TopScreen({ onCreateRoom, onJoinRoom }) {
 // ── Create Room ───────────────────────────────────────────────────────────────
 function CreateRoomScreen({ onBack, onRoomCreated }) {
   const [playerCount, setPlayerCount] = useState(4);
+  const [winScore, setWinScore] = useState(7);
   const [hostName, setHostName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -257,7 +128,7 @@ function CreateRoomScreen({ onBack, onRoomCreated }) {
     const code = genRoomCode();
     const playerId = genPlayerId();
     await set(ref(db, `rooms/${code}`), {
-      code, playerCount, phase: "waiting", hostId: playerId,
+      code, playerCount, winScore, phase: "waiting", hostId: playerId,
       players: { [playerId]: { id: playerId, name: hostName.trim(), score: 0, isHost: true } },
       createdAt: Date.now(),
     });
@@ -268,7 +139,7 @@ function CreateRoomScreen({ onBack, onRoomCreated }) {
     <div style={S.page}>
       <button style={S.btnOutline} onClick={onBack}>← 戻る</button>
       <h2 style={S.h2}>部屋を作る</h2>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>プレイ人数を選んでください</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>プレイ人数を選んでください</p>
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         {[2, 3, 4, 5].map(n => (
           <button key={n} onClick={() => setPlayerCount(n)} style={{
@@ -284,6 +155,17 @@ function CreateRoomScreen({ onBack, onRoomCreated }) {
           <p style={{ color: C.accent, fontSize: 12, margin: 0 }}>⚡ 2人モード：{ROLE.king}と{ROLE.retainer}が1対1で対決！</p>
         </div>
       )}
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>勝利ポイントを選んでください</p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        {[3, 5, 7, 9].map(n => (
+          <button key={n} onClick={() => setWinScore(n)} style={{
+            flex: 1, padding: "14px 0", borderRadius: 12, fontWeight: 800, fontSize: 16, cursor: "pointer",
+            background: winScore === n ? C.accentDim : C.card,
+            border: `2px solid ${winScore === n ? C.accent : C.border}`,
+            color: winScore === n ? C.accent : C.muted,
+          }}>{n}pt</button>
+        ))}
+      </div>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 8 }}>あなたの名前</p>
       <input style={S.input} placeholder="名前を入力" value={hostName} onChange={e => setHostName(e.target.value)} maxLength={10} />
       {error && <div style={S.errorBox}>{error}</div>}
@@ -340,7 +222,7 @@ function WaitingScreen({ roomCode, playerId, onGameStart }) {
       if (!snap.exists()) return;
       const r = snap.val();
       setRoom(r);
-      if (r.phase !== "waiting") onGameStart(r);
+      if (r.phase === "roleReveal") onGameStart(r);
     });
   }, [roomCode]);
 
@@ -348,22 +230,17 @@ function WaitingScreen({ roomCode, playerId, onGameStart }) {
   const isHost = room?.hostId === playerId;
   const isFull = players.length >= (room?.playerCount || 4);
 
-  const [starting, setStarting] = useState(false);
   const startGame = async () => {
-    if (starting) return;
-    setStarting(true);
     const playerList = Object.values(room.players);
     const king = playerList[Math.floor(Math.random() * playerList.length)];
-    const kingName = king.name;
     const genre = GENRES[Math.floor(Math.random() * GENRES.length)];
-    // まずphase:loadingに切り替えてからクイズ生成
     let quiz;
-    quiz = generateQuiz(genre, kingName, []);
+    try { quiz = await generateQuiz(genre, kingName); }
+    catch { quiz = { question: `あなたの好きな${genre}は？`, hint: "" }; }
     await update(ref(db, `rooms/${roomCode}`), {
-      phase: "roleReveal", king: king.id, kingName, round: 1,
-      genre, quiz, answers: {}, answeredCount: 0, usedQuestions: [quiz.question],
+      phase: "roleReveal", king: king.id, round: 1,
+      genre, quiz, answers: {}, answeredCount: 0,
     });
-    setStarting(false);
   };
 
   if (!room) return <div style={S.page}><div style={S.spinner} /><p style={{ color: C.muted, textAlign: "center", marginTop: 8 }}>接続中…</p></div>;
@@ -396,7 +273,7 @@ function WaitingScreen({ roomCode, playerId, onGameStart }) {
           </div>
         ))}
       </div>
-      {isHost && isFull && <button style={{ ...S.btn(), marginTop: 8, opacity: starting ? 0.6 : 1 }} onClick={startGame} disabled={starting}>{starting ? "準備中…🎮" : "ゲームスタート 🎮"}</button>}
+      {isHost && isFull && <button style={{ ...S.btn(), marginTop: 8 }} onClick={startGame}>ゲームスタート 🎮</button>}
       {isHost && !isFull && <p style={{ color: C.muted, textAlign: "center", fontSize: 13 }}>全員揃ったらスタートできます</p>}
       {!isHost && <p style={{ color: C.muted, textAlign: "center", fontSize: 13 }}>ホストがゲームを開始するまで待ってください</p>}
     </div>
@@ -422,7 +299,7 @@ function RoleRevealScreen({ room, playerId }) {
           {isKing ? ROLE.king : ROLE.retainer}
         </p>
         <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>
-          {isKing ? "家臣たちの回答を見てポイントを付けよう！" : "王の理解者となり、気に入られよう！"}
+          {isKing ? "家臣たちの回答を見てポイントを付けよう！" : "正直に答えて理解王に認められよう！"}
         </p>
       </div>
       {isHost
@@ -455,7 +332,7 @@ function QuizScreen({ room, playerId }) {
       answeredCount: newCount,
     });
     if (newCount >= totalAnswerers) {
-      await update(ref(db, `rooms/${room.code}`), { phase: "review" });
+      await update(ref(db, `rooms/${room.code}`), { phase: "open" });
     }
     setSubmitted(true);
   };
@@ -491,43 +368,6 @@ function QuizScreen({ room, playerId }) {
   );
 }
 
-
-// ── Review（全員の回答確認）────────────────────────────────────────────────────
-function ReviewScreen({ room, playerId }) {
-  const isHost = room.hostId === playerId;
-  const isKing = room.king === playerId;
-  const retainers = Object.values(room.players).filter(p => p.id !== room.king);
-
-  const goToScoring = async () => {
-    await update(ref(db, `rooms/${room.code}`), { phase: "open" });
-  };
-
-  return (
-    <div style={S.page}>
-      <p style={S.tag}>回答確認 · round {room.round}</p>
-      <div style={S.quizCard}>
-        <p style={S.quizQ}>{room.quiz?.question}</p>
-      </div>
-      <div style={{ ...S.card, background: "rgba(71,197,116,0.08)", border: `1px solid ${C.green}`, marginBottom: 20, textAlign: "center" }}>
-        <p style={{ color: C.green, fontSize: 13, fontWeight: 700, margin: 0 }}>
-          💬 全員の回答が出揃いました！感想を話し合おう
-        </p>
-      </div>
-      {retainers.map(p => (
-        <div key={p.id} style={S.answerReveal}>
-          <p style={S.answerName}>{p.name}（{ROLE.retainer}）</p>
-          <p style={S.answerText}>{room.answers?.[p.id] || "（回答なし）"}</p>
-        </div>
-      ))}
-      <div style={{ marginTop: 16 }}>
-        {isHost
-          ? <button style={S.btn()} onClick={goToScoring}>👑 {room.kingName}の評価へ →</button>
-          : <p style={{ color: C.muted, textAlign: "center", fontSize: 13 }}>ホストが評価に進めます</p>}
-      </div>
-    </div>
-  );
-}
-
 // ── Open ──────────────────────────────────────────────────────────────────────
 function OpenScreen({ room, playerId }) {
   const isKing = room.king === playerId;
@@ -540,9 +380,10 @@ function OpenScreen({ room, playerId }) {
     retainers.forEach(p => {
       newPlayers[p.id] = { ...newPlayers[p.id], score: (newPlayers[p.id].score || 0) + (points[p.id] || 0) };
     });
-    const winner = Object.values(newPlayers).find(p => p.score >= WIN_SCORE);
+    const winScore = room.winScore || WIN_SCORE;
+    const winner = Object.values(newPlayers).find(p => p.score >= winScore);
     await update(ref(db, `rooms/${room.code}`), {
-      players: newPlayers, phase: "scored",
+      players: newPlayers, phase: winner ? "finished" : "result",
       lastPoints: points, winner: winner ? winner.id : null,
     });
   };
@@ -567,24 +408,21 @@ function OpenScreen({ room, playerId }) {
                 const sel = points[p.id] === pt;
                 return (
                   <button key={pt} onClick={() => setPoints(prev => ({ ...prev, [p.id]: pt }))} style={{
-                    flex: 1, padding: "8px 4px", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 10, cursor: "pointer", lineHeight: 1.4,
+                    flex: 1, padding: "8px 0", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer",
                     background: sel ? (pt > 0 ? C.green : pt === 0 ? C.muted : C.red) : C.border,
                     color: sel ? "#fff" : C.muted,
-                  }}>
-                    <div>{POINT_LABELS[String(pt)]}</div>
-                    <div style={{ fontSize: 12 }}>{pt > 0 ? "+" : ""}{pt}</div>
-                  </button>
+                  }}>{pt > 0 ? "+" : ""}{pt}</button>
                 );
               })}
             </div>
           )}
         </div>
       ))}
-      {isKing && allScored && <button style={{ ...S.btn(), marginTop: 8 }} onClick={submitScoring}>評価完了 →</button>}
+      {isKing && allScored && <button style={{ ...S.btn(), marginTop: 8 }} onClick={submitScoring}>採点完了 →</button>}
       {isKing && !allScored && <p style={{ color: C.muted, textAlign: "center", fontSize: 13 }}>全員にポイントを付けてください</p>}
       {!isKing && (
         <div style={{ textAlign: "center", padding: "16px 0" }}>
-          <p style={{ color: C.accent, fontWeight: 700, margin: "0 0 4px" }}>👑 {ROLE.king}がご判断なさり中…</p>
+          <p style={{ color: C.accent, fontWeight: 700, margin: "0 0 4px" }}>👑 {ROLE.king}が採点中…</p>
           <p style={{ color: C.muted, fontSize: 13 }}>結果を待ちましょう</p>
         </div>
       )}
@@ -592,69 +430,22 @@ function OpenScreen({ room, playerId }) {
   );
 }
 
-
-// ── Scored ────────────────────────────────────────────────────────────────────
-function ScoredScreen({ room, playerId }) {
-  const isHost = room.hostId === playerId;
-  const retainers = Object.values(room.players).filter(p => p.id !== room.king);
-
-  const goNext = async () => {
-    await update(ref(db, `rooms/${room.code}`), {
-      phase: room.winner ? "finished" : "result",
-    });
-  };
-
-  return (
-    <div style={S.page}>
-      <p style={S.tag}>評価結果 · round {room.round}</p>
-      <div style={S.quizCard}><p style={S.quizQ}>{room.quiz?.question}</p></div>
-      {retainers.map(p => {
-        const pt = room.lastPoints?.[p.id];
-        return (
-          <div key={p.id} style={{
-            ...S.answerReveal,
-            border: `1px solid ${pt > 0 ? C.green : pt < 0 ? C.red : C.border}`,
-          }}>
-            <p style={S.answerName}>{p.name}（{ROLE.retainer}）</p>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <p style={{ ...S.answerText, flex: 1, marginRight: 12 }}>{room.answers?.[p.id] || "（回答なし）"}</p>
-              {pt !== undefined && (
-                <div style={{ textAlign: "center", flexShrink: 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: pt > 0 ? C.green : pt < 0 ? C.red : C.muted }}>
-                    {POINT_LABELS[String(pt)]}
-                  </div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: pt > 0 ? C.green : pt < 0 ? C.red : C.muted }}>
-                    {pt > 0 ? "+" : ""}{pt}pt
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      {isHost
-        ? <button style={{ ...S.btn(), marginTop: 16 }} onClick={goNext}>スコアを見る →</button>
-        : <p style={{ color: C.muted, textAlign: "center", fontSize: 13, marginTop: 16 }}>ホストが次へ進めます</p>}
-    </div>
-  );
-}
-
 // ── Result ────────────────────────────────────────────────────────────────────
 function ResultScreen({ room, playerId }) {
   const isHost = room.hostId === playerId;
-  const players = Object.values(room.players).filter(p => p.id !== room.king).sort((a, b) => b.score - a.score);
+  const players = Object.values(room.players).sort((a, b) => b.score - a.score);
 
   const nextRound = async () => {
     const genre = GENRES[Math.floor(Math.random() * GENRES.length)];
-    const nextRoundNum = (room.round || 1) + 1;
+    let quiz;
+    try { quiz = await generateQuiz(genre, room.kingName); }
+    catch { quiz = { question: `あなたの好きな${genre}は？`, hint: "" }; }
+    const playerList = Object.values(room.players);
+    const nextKing = playerList[Math.floor(Math.random() * playerList.length)];
     await update(ref(db, `rooms/${room.code}`), {
-      phase: "loading", round: nextRoundNum,
-      genre, answers: {}, answeredCount: 0, lastPoints: {},
+      phase: "roleReveal", king: nextKing.id, round: (room.round || 1) + 1,
+      genre, quiz, answers: {}, answeredCount: 0, lastPoints: {},
     });
-    const usedQuestions = room.usedQuestions || [];
-    const quiz = generateQuiz(genre, room.kingName, usedQuestions);
-    const newUsed = [...usedQuestions, quiz.question];
-    await update(ref(db, `rooms/${room.code}`), { quiz, phase: "quiz", usedQuestions: newUsed });
   };
 
   return (
@@ -677,12 +468,6 @@ function ResultScreen({ room, playerId }) {
                 </span>
               )}
               <span style={{ fontSize: 22, fontWeight: 900, color: C.accent, minWidth: 28, textAlign: "right" }}>{p.score}</span>
-              {!isKingThisRound && p.score === WIN_SCORE - 1 && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.accent, background: C.accentDim, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}>リーチ！🎯</span>
-              )}
-              {!isKingThisRound && p.score === WIN_SCORE - 2 && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.red, background: C.redDim, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}>もう少し！🔥</span>
-              )}
             </div>
           </div>
         );
@@ -705,7 +490,7 @@ function FinishedScreen({ room, playerId }) {
       <div style={S.winBox}>
         <div style={{ fontSize: 52, marginBottom: 8 }}>🏆</div>
         <p style={{ color: C.accent, fontWeight: 900, fontSize: 22, margin: "0 0 4px" }}>{winner?.name} の勝利！</p>
-        <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>{WIN_SCORE}ポイント達成！</p>
+        <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>{room.winScore || WIN_SCORE}ポイント達成！</p>
       </div>
       <h2 style={{ ...S.h2, marginBottom: 12 }}>最終スコア</h2>
       {players.map((p, i) => (
@@ -718,19 +503,6 @@ function FinishedScreen({ room, playerId }) {
         </div>
       ))}
       <button style={{ ...S.btn(), marginTop: 20 }} onClick={() => remove(ref(db, `rooms/${room.code}`))}>タイトルに戻る</button>
-    </div>
-  );
-}
-
-
-// ── Loading ───────────────────────────────────────────────────────────────────
-function LoadingScreen() {
-  return (
-    <div style={S.page}>
-      <div style={{ textAlign: "center", paddingTop: 120 }}>
-        <div style={S.spinner} />
-        <p style={{ color: C.muted, marginTop: 16, fontSize: 14 }}>クイズを生成中…</p>
-      </div>
     </div>
   );
 }
@@ -778,12 +550,9 @@ export default function App() {
         />
       )}
       {screen === "waiting" && roomCode && <WaitingScreen roomCode={roomCode} playerId={playerId} onGameStart={(r) => { setRoom(r); setScreen("game"); }} />}
-      {screen === "game" && room && phase === "loading" && <LoadingScreen />}
       {screen === "game" && room && phase === "roleReveal" && <RoleRevealScreen room={room} playerId={playerId} />}
       {screen === "game" && room && phase === "quiz" && <QuizScreen room={room} playerId={playerId} />}
-      {screen === "game" && room && phase === "review" && <ReviewScreen room={room} playerId={playerId} />}
       {screen === "game" && room && phase === "open" && <OpenScreen room={room} playerId={playerId} />}
-      {screen === "game" && room && phase === "scored" && <ScoredScreen room={room} playerId={playerId} />}
       {screen === "game" && room && phase === "result" && <ResultScreen room={room} playerId={playerId} />}
       {screen === "game" && room && phase === "finished" && <FinishedScreen room={room} playerId={playerId} />}
     </div>
