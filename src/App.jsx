@@ -247,6 +247,7 @@ function TopScreen({ onCreateRoom, onJoinRoom }) {
 // ── Create Room ───────────────────────────────────────────────────────────────
 function CreateRoomScreen({ onBack, onRoomCreated }) {
   const [playerCount, setPlayerCount] = useState(4);
+  const [winScore, setWinScore] = useState(7);
   const [hostName, setHostName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -257,7 +258,7 @@ function CreateRoomScreen({ onBack, onRoomCreated }) {
     const code = genRoomCode();
     const playerId = genPlayerId();
     await set(ref(db, `rooms/${code}`), {
-      code, playerCount, phase: "waiting", hostId: playerId,
+      code, playerCount, winScore, phase: "waiting", hostId: playerId,
       players: { [playerId]: { id: playerId, name: hostName.trim(), score: 0, isHost: true } },
       createdAt: Date.now(),
     });
@@ -268,11 +269,11 @@ function CreateRoomScreen({ onBack, onRoomCreated }) {
     <div style={S.page}>
       <button style={S.btnOutline} onClick={onBack}>← 戻る</button>
       <h2 style={S.h2}>部屋を作る</h2>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>プレイ人数を選んでください</p>
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        {[2, 3, 4, 5].map(n => (
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>プレイ人数を選んでください</p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {[2, 3, 4, 5, 6].map(n => (
           <button key={n} onClick={() => setPlayerCount(n)} style={{
-            flex: 1, padding: "16px 0", borderRadius: 12, fontWeight: 800, fontSize: 18, cursor: "pointer",
+            flex: 1, minWidth: "18%", padding: "14px 0", borderRadius: 12, fontWeight: 800, fontSize: 17, cursor: "pointer",
             background: playerCount === n ? C.accentDim : C.card,
             border: `2px solid ${playerCount === n ? C.accent : C.border}`,
             color: playerCount === n ? C.accent : C.muted,
@@ -284,6 +285,17 @@ function CreateRoomScreen({ onBack, onRoomCreated }) {
           <p style={{ color: C.accent, fontSize: 12, margin: 0 }}>⚡ 2人モード：{ROLE.king}と{ROLE.retainer}が1対1で対決！</p>
         </div>
       )}
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>勝利ポイントを選んでください</p>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        {[3, 5, 7, 9].map(n => (
+          <button key={n} onClick={() => setWinScore(n)} style={{
+            flex: 1, padding: "14px 0", borderRadius: 12, fontWeight: 800, fontSize: 16, cursor: "pointer",
+            background: winScore === n ? C.accentDim : C.card,
+            border: `2px solid ${winScore === n ? C.accent : C.border}`,
+            color: winScore === n ? C.accent : C.muted,
+          }}>{n}pt</button>
+        ))}
+      </div>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 8 }}>あなたの名前</p>
       <input style={S.input} placeholder="名前を入力" value={hostName} onChange={e => setHostName(e.target.value)} maxLength={10} />
       {error && <div style={S.errorBox}>{error}</div>}
@@ -424,6 +436,11 @@ function RoleRevealScreen({ room, playerId }) {
         <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>
           {isKing ? "家臣たちの回答を見てポイントを付けよう！" : "王の理解者となり、気に入られよう！"}
         </p>
+        {!isKing && (
+          <p style={{ color: C.accent, fontSize: 14, fontWeight: 700, marginTop: 12, marginBottom: 0 }}>
+            👑 今回の王様：{room.kingName}
+          </p>
+        )}
       </div>
       {isHost
         ? <button style={S.btn()} onClick={proceed}>全員確認できたら進む →</button>
@@ -540,7 +557,8 @@ function OpenScreen({ room, playerId }) {
     retainers.forEach(p => {
       newPlayers[p.id] = { ...newPlayers[p.id], score: (newPlayers[p.id].score || 0) + (points[p.id] || 0) };
     });
-    const winner = Object.values(newPlayers).find(p => p.score >= WIN_SCORE);
+    const winScore = room.winScore || WIN_SCORE;
+    const winner = Object.values(newPlayers).find(p => p.score >= winScore);
     await update(ref(db, `rooms/${room.code}`), {
       players: newPlayers, phase: "scored",
       lastPoints: points, winner: winner ? winner.id : null,
@@ -677,10 +695,10 @@ function ResultScreen({ room, playerId }) {
                 </span>
               )}
               <span style={{ fontSize: 22, fontWeight: 900, color: C.accent, minWidth: 28, textAlign: "right" }}>{p.score}</span>
-              {!isKingThisRound && p.score === WIN_SCORE - 1 && (
+              {!isKingThisRound && p.score === (room.winScore || WIN_SCORE) - 1 && (
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.accent, background: C.accentDim, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}>リーチ！🎯</span>
               )}
-              {!isKingThisRound && p.score === WIN_SCORE - 2 && (
+              {!isKingThisRound && p.score === (room.winScore || WIN_SCORE) - 2 && (
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.red, background: C.redDim, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}>もう少し！🔥</span>
               )}
             </div>
@@ -705,7 +723,7 @@ function FinishedScreen({ room, playerId }) {
       <div style={S.winBox}>
         <div style={{ fontSize: 52, marginBottom: 8 }}>🏆</div>
         <p style={{ color: C.accent, fontWeight: 900, fontSize: 22, margin: "0 0 4px" }}>{winner?.name} の勝利！</p>
-        <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>{WIN_SCORE}ポイント達成！</p>
+        <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>{room.winScore || WIN_SCORE}ポイント達成！</p>
       </div>
       <h2 style={{ ...S.h2, marginBottom: 12 }}>最終スコア</h2>
       {players.map((p, i) => (
