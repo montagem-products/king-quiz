@@ -228,8 +228,8 @@ function TopScreen({ onCreateRoom, onJoinRoom }) {
     <div style={S.page}>
       <div style={{ marginBottom: 40, paddingTop: 20 }}>
         <p style={S.tag}>party game</p>
-        <h1 style={S.h1}>忠実なる家臣ゲーム</h1>
-        <p style={{ color: C.muted, fontSize: 13, marginTop: 6, marginBottom: 28 }}>王に認められた有能家臣が勝者だ！</p>
+        <h1 style={S.h1}>理解のある家臣くんゲーム</h1>
+        <p style={{ color: C.muted, fontSize: 13, marginTop: 6, marginBottom: 28 }}>王を理解して栄誉を勝ち取れ。</p>
       </div>
       <button style={S.btn()} onClick={onCreateRoom}>🏠　部屋を作る</button>
       <button style={S.btn(C.red)} onClick={onJoinRoom}>🚪　部屋に参加する</button>
@@ -434,7 +434,7 @@ function RoleRevealScreen({ room, playerId }) {
           {isKing ? ROLE.king : ROLE.retainer}
         </p>
         <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>
-          {isKing ? "家臣たちの回答を見てポイントを付けよう！" : "王の理解者となり、気に入られよう！"}
+          {isKing ? "家臣たちの回答を見てポイントを付けよう" : "王のよき理解者となり、ポイントを稼ぐのだ"}
         </p>
         {!isKing && (
           <p style={{ color: C.accent, fontSize: 14, fontWeight: 700, marginTop: 12, marginBottom: 0 }}>
@@ -538,7 +538,7 @@ function ReviewScreen({ room, playerId }) {
       ))}
       <div style={{ marginTop: 16 }}>
         {isHost
-          ? <button style={S.btn()} onClick={goToScoring}>👑 {room.kingName}の評価へ →</button>
+          ? <button style={S.btn()} onClick={goToScoring}> {room.kingName}の評価へ... →</button>
           : <p style={{ color: C.muted, textAlign: "center", fontSize: 13 }}>ホストが評価に進めます</p>}
       </div>
     </div>
@@ -602,7 +602,7 @@ function OpenScreen({ room, playerId }) {
       {isKing && !allScored && <p style={{ color: C.muted, textAlign: "center", fontSize: 13 }}>全員にポイントを付けてください</p>}
       {!isKing && (
         <div style={{ textAlign: "center", padding: "16px 0" }}>
-          <p style={{ color: C.accent, fontWeight: 700, margin: "0 0 4px" }}>👑 {ROLE.king}がご判断なさり中…</p>
+          <p style={{ color: C.accent, fontWeight: 700, margin: "0 0 4px" }}>{ROLE.king}がご判断なさり中…</p>
           <p style={{ color: C.muted, fontSize: 13 }}>結果を待ちましょう</p>
         </div>
       )}
@@ -652,7 +652,7 @@ function ScoredScreen({ room, playerId }) {
       })}
       {isHost
         ? <button style={{ ...S.btn(), marginTop: 16 }} onClick={goNext}>スコアを見る →</button>
-        : <p style={{ color: C.muted, textAlign: "center", fontSize: 13, marginTop: 16 }}>ホストが次へ進めます</p>}
+        : <p style={{ color: C.muted, textAlign: "center", fontSize: 13, marginTop: 16 }}>ホストが次へ進めます...</p>}
     </div>
   );
 }
@@ -722,7 +722,7 @@ function FinishedScreen({ room, playerId }) {
       <p style={S.tag}>ゲーム終了</p>
       <div style={S.winBox}>
         <div style={{ fontSize: 52, marginBottom: 8 }}>🏆</div>
-        <p style={{ color: C.accent, fontWeight: 900, fontSize: 22, margin: "0 0 4px" }}>{winner?.name} の勝利！</p>
+        <p style={{ color: C.accent, fontWeight: 900, fontSize: 22, margin: "0 0 4px" }}>{winner?.name} こそが理解のある家臣くん！</p>
         <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>{room.winScore || WIN_SCORE}ポイント達成！</p>
       </div>
       <h2 style={{ ...S.h2, marginBottom: 12 }}>最終スコア</h2>
