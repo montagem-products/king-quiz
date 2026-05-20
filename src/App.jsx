@@ -228,7 +228,7 @@ function TopScreen({ onCreateRoom, onJoinRoom }) {
     <div style={S.page}>
       <div style={{ marginBottom: 40, paddingTop: 20 }}>
         <p style={S.tag}>party game</p>
-        <h1 style={S.h1}>理解のある家臣くんゲーム</h1>
+        <h1 style={S.h1}>王の理解者ゲーム</h1>
         <p style={{ color: C.muted, fontSize: 13, marginTop: 6, marginBottom: 28 }}>王を理解して栄誉を勝ち取れ。</p>
       </div>
       <button style={S.btn()} onClick={onCreateRoom}>🏠　部屋を作る</button>
